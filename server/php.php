@@ -167,11 +167,16 @@ class qqFileUploader {
                 $filename .= rand(10, 99);
             }
         }
+        $tmpFilename = $uploadDirectory . $filename . '.' . $ext;
         
-        if ($this->file->save($uploadDirectory . $filename . '.' . $ext)){
-            return array('success'=>true);
+        if ($this->file->save($tmpFilename)){
+           return array(
+              'success' => true,
+              'tmp_name' => $tmpFilename,
+              'size' => $size
+           );
         } else {
-            return array('error'=> 'Could not save uploaded file.' .
+            return array('error' => 'Could not save uploaded file.' .
                 'The upload was cancelled, or server error encountered');
         }
         
