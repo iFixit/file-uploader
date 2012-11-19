@@ -276,7 +276,7 @@ qq.FileUploaderBasic = function(o){
         maxConnections: 3,
         // validation        
         allowedExtensions: [],
-        acceptFiles: null,		// comma separated string of mime-types for browser to display in browse dialog
+        acceptFiles: null,        // comma separated string of mime-types for browser to display in browse dialog
         sizeLimit: 0,   
         minSizeLimit: 0,                             
         // events
@@ -286,7 +286,7 @@ qq.FileUploaderBasic = function(o){
         onComplete: function(id, fileName, responseJSON){},
         onCancel: function(id, fileName){},
         onUpload: function(id, fileName, xhr){},
-		onError: function(id, fileName, xhr) {},
+        onError: function(id, fileName, xhr) {},
         // messages                
         messages: {
             typeError: "{file} has invalid extension. Only {extensions} are allowed.",
@@ -485,8 +485,8 @@ qq.FileUploaderBasic.prototype = {
     },
     _isAllowedExtension: function(fileName){
         var ext = (-1 !== fileName.indexOf('.')) 
-					? fileName.replace(/.*[.]/, '').toLowerCase() 
-					: '';
+                    ? fileName.replace(/.*[.]/, '').toLowerCase() 
+                    : '';
         var allowed = this._options.allowedExtensions;
         
         if (!allowed.length){return true;}        
@@ -522,12 +522,15 @@ qq.FileUploader = function(o){
         element: null,
         // if set, will be used instead of qq-upload-list in template
         listElement: null,        
-        uploadButtonText: 'Upload a file',        
-        cancelButtonText: 'Cancel',        
+        dragDropText: 'Drop files here to upload',        
+        uploadButtonText: 'Upload a file',
+        cancelButtonText: 'Cancel',
+        progressText: '{percentText} from {totalText}',
+        progressCompleteText: '{totalText}',
         failUploadText: 'Upload failed',
                 
         template: '<div class="qq-uploader">' + 
-                '<div class="qq-upload-drop-area"><span>Drop files here to upload</span></div>' +
+                '<div class="qq-upload-drop-area"><span>{dragDropText}</span></div>' +
                 '<div class="qq-upload-button">{uploadButtonText}</div>' +
                 '<ul class="qq-upload-list"></ul>' + 
              '</div>',
@@ -538,7 +541,7 @@ qq.FileUploader = function(o){
                 '<span class="qq-upload-spinner"></span>' +
                 '<span class="qq-upload-size"></span>' +
                 '<a class="qq-upload-cancel" href="#">{cancelButtonText}</a>' +
-                '<span class="qq-upload-failed-text">{failUploadtext}</span>' +
+                '<span class="qq-upload-failed-text">{failUploadText}</span>' +
             '</li>',        
         
         classes: {
@@ -565,9 +568,11 @@ qq.FileUploader = function(o){
     
     // overwrite the upload button text if any
     // same for the Cancel button and Fail message text
-    this._options.template     = this._options.template.replace(/\{uploadButtonText\}/g, this._options.uploadButtonText);
-    this._options.fileTemplate = this._options.fileTemplate.replace(/\{cancelButtonText\}/g, this._options.cancelButtonText);
-    this._options.fileTemplate = this._options.fileTemplate.replace(/\{failUploadtext\}/g, this._options.failUploadText);
+    var options = this._options;
+    options.template     = options.template.replace(/\{dragDropText\}/g, options.dragDropText);
+    options.template     = options.template.replace(/\{uploadButtonText\}/g, options.uploadButtonText);
+    options.fileTemplate = options.fileTemplate.replace(/\{cancelButtonText\}/g, options.cancelButtonText);
+    options.fileTemplate = options.fileTemplate.replace(/\{failUploadText\}/g, options.failUploadText);
 
     this._element = this._options.element;
     this._element.innerHTML = this._options.template;        
@@ -633,13 +638,13 @@ qq.extend(qq.FileUploader.prototype, {
             }
         });
 
-		this.addDisposer(function() { dz.dispose(); });
+        this.addDisposer(function() { dz.dispose(); });
 
 		dropArea.style.display = 'none';
     },
     _setupDragDrop: function(){
         var dropArea = this._find(this._element, 'drop');
-		var self = this;
+        var self = this;
         this._options.extraDropzones.push(dropArea); 
         
         var dropzones = this._options.extraDropzones;
@@ -650,7 +655,7 @@ qq.extend(qq.FileUploader.prototype, {
         
         this._attach(document, 'dragenter', function(e){
             // console.log();
-			// if (!self._isValidFileDrag(e)) return; // now causing error. Need it be here?
+            // if (!self._isValidFileDrag(e)) return; // now causing error. Need it be here?
             if (qq.hasClass(dropArea, self._classes.dropDisabled)) return;
 
             dropArea.style.display = 'block';        
@@ -684,10 +689,15 @@ qq.extend(qq.FileUploader.prototype, {
         
         var text; 
         if (loaded != total){
-            text = Math.round(loaded / total * 100) + '% from ' + this._formatSize(total);
+            text = this._options.progressText;
+            var percentText = Math.round(loaded / total * 100) + '%';
+            text = text.replace(/\{percentText\}/g, percentText);
         } else {                                   
-            text = this._formatSize(total);
+            text = this._options.progressCompleteText;
         }          
+
+        var totalText = this._formatSize(total);
+        text = text.replace(/\{totalText\}/g, totalText);
         
         qq.setText(size, text);         
     },
@@ -712,12 +722,12 @@ qq.extend(qq.FileUploader.prototype, {
         var fileElement = this._find(item, 'file');        
         qq.setText(fileElement, this._formatFileName(fileName));
         this._find(item, 'size').style.display = 'none';        
-		if (!this._options.multiple) this._clearList();
+        if (!this._options.multiple) this._clearList();
         this._listElement.appendChild(item);
     },
-	_clearList: function(){
-		this._listElement.innerHTML = '';
-	},
+    _clearList: function(){
+        this._listElement.innerHTML = '';
+    },
     _getItemByFileId: function(id){
         var item = this._listElement.firstChild;        
         
@@ -839,11 +849,11 @@ qq.UploadDropZone.prototype = {
         var dt = e.dataTransfer,
             // do not check dt.types.contains in webkit, because it crashes safari 4            
             isSafari = qq.safari();
-		
-		// e.dataTransfer currently causing IE errors
-		// any volunteers to get drag-and-drop uploading working in IE9?
-		if (qq.ie()) return false;
-		
+        
+        // e.dataTransfer currently causing IE errors
+        // any volunteers to get drag-and-drop uploading working in IE9?
+        if (qq.ie()) return false;
+        
         // dt.effectAllowed is none in Safari 5
         // dt.types.contains check is for firefox            
         return dt && dt.effectAllowed != 'none' && 
